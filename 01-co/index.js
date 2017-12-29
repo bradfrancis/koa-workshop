@@ -11,8 +11,19 @@ var fs = require('fs');
  * Hint: you can return a yieldable.
  */
 
-exports.stat = function (filename) {
 
+// Answer for exports.stat found at 
+// 'https://stackoverflow.com/questions/36571340/cant-find-an-explanation-for-koa-js-workshop-solution-exercise-number-one#_=_'
+exports.stat = function (filename) {
+    return new Promise((resolve, reject) => {
+        fs.stat(filename, (err, stats) => {
+            if (err) {
+                reject(err);
+            }
+
+            resolve(stats);
+        });
+    });
 };
 
 /**
@@ -32,5 +43,13 @@ exports.stat = function (filename) {
  */
 
 exports.exists = function (filename) {
+    return new Promise((resolve, reject) => {
+        fs.stat(filename, (err, stats) => {
+            if (err) {
+                resolve(false);
+            }
 
+            resolve(true);
+        });
+    });
 };
