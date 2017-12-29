@@ -8,6 +8,9 @@ app.use(function* errorHandler(next) {
     yield next;
   } catch (err) {
     // your error handling logic goes here
+    this.response.body = 'internal server error';
+    this.response.status = 500; 
+    app.emit('error', err, this);
   }
 });
 
