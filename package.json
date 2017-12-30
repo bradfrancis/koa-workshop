@@ -24,5 +24,8 @@
   },
   "scripts": {
     "test": "mocha --harmony-generators --reporter spec --bail */test.js"
+  },
+  "devDependencies": {
+    "koa-bodyparser": "^2.5.0"
   }
 }

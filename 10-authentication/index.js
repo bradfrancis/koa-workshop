@@ -2,22 +2,31 @@
 var fs = require('fs');
 var koa = require('koa');
 var path = require('path');
-var parse = require('co-body');
-var csrf = require('koa-csrf');
+var bodyParser = require('koa-bodyparser');
+var CSRF = require('koa-csrf');
 var session = require('koa-session');
 
 var app = module.exports = koa();
 
-var form = fs.readFileSync(path.join(__dirname, 'form.html'), 'utf8');
+// we need to set the `.keys` for signed cookies and the cookie-session module
+app.keys = ['secret1', 'secret2', 'secret3'];
 
-// adds .csrf among other properties to `this`.
-csrf(app);
+var form = fs.readFileSync(path.join(__dirname, 'form.html'), 'utf8');
 
 // use koa-session somewhere at the top of the app
 app.use(session());
 
-// we need to set the `.keys` for signed cookies and the cookie-session module
-app.keys = ['secret1', 'secret2', 'secret3'];
+app.use(bodyParser());
+
+// add the CSRF middleware
+app.use(new CSRF({
+  invalidSessionSecretMessage: 'Invalid session secret',
+  invalidSessionSecretStatusCode: 403,
+  invalidTokenMessage: 'Invalid CSRF token',
+  invalidTokenStatusCode: 403,
+  excludedMethods: [ 'GET', 'HEAD', 'OPTIONS' ],
+  disableQuery: false
+}));
 
 app.use(function* home(next) {
   if (this.request.path !== '/') return yield next;
@@ -33,8 +42,29 @@ app.use(function* home(next) {
 
 app.use(function* login(next) {
   if (this.request.path !== '/login') return yield* next;
-  if (this.request.method === 'GET') return this.response.body = form.replace('{{csrf}}', this.csrf);
 
+  // Handle GET request
+  if (this.request.method === 'GET') {
+    return this.response.body = form.replace('{{csrf}}', this.csrf);
+  }
+
+  // Handle POST request
+  if (this.request.method === 'POST')  {
+    let username = this.request.body.username || undefined;
+    let password = this.request.body.password || undefined;
+
+    // Validate user login credentials
+    if (username !== 'username' || password !== 'password') {
+      this.session.authenticated = false; // Just to be safe
+      this.throw(400, 'bad username or password');
+    }
+
+    // Authenticate and redirect back to the home page
+    this.session.authenticated = true;
+    this.response.status = 303;
+    this.response.redirect("/");
+  }
+    
 })
 
 /**
@@ -45,7 +75,10 @@ app.use(function* login(next) {
 
 app.use(function* logout(next) {
   if (this.request.path !== '/logout') return yield* next;
-
+  
+  this.session.authenticated = false;
+  this.response.status = 303;
+  this.response.redirect("/login")
 })
 
 /**
